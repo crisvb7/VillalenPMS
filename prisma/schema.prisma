@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/db"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Room {
+  id                 String      @id @default(cuid())
+  name               String
+  capacity           Int
+  basePrice          Decimal     @db.Decimal(10, 2)
+  isClean            Boolean     @default(true)
+  channexRoomTypeId  String?
+  bookings           Booking[]
+  icalFeeds          ICalFeed[]
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model ICalFeed {
+  id        String    @id @default(cuid())
+  roomId    String
+  platform  String
+  url       String
+  lastSync  DateTime?
+  lastError String?
+  room      Room      @relation(fields: [roomId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([roomId, platform])
+}
+
+model ChannelConfig {
+  id            String   @id @default(cuid())
+  channel       String   @unique
+  apiKey        String?
+  propertyId    String?
+  webhookSecret String?
+  active        Boolean  @default(false)
+  settings      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Guest {
+  id         String    @id @default(cuid())
+  firstName  String
+  lastName   String
+  documentId String    @unique
+  email      String
+  phone      String?
+  bookings   Booking[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum BookingSource {
+  WEB
+  BOOKING
+  AIRBNB
+  MANUAL
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  guestId      String
+  roomId       String
+  checkInDate  DateTime
+  checkOutDate DateTime
+  totalAmount  Decimal       @db.Decimal(10, 2)
+  status       BookingStatus @default(PENDING)
+  source       BookingSource @default(WEB)
+  depositPaid  Boolean       @default(false)
+  externalId   String?       @unique
+  notes        String?
+  guest        Guest         @relation(fields: [guestId], references: [id])
+  room         Room          @relation(fields: [roomId], references: [id])
+  invoice      Invoice?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Invoice {
+  id            String         @id @default(cuid())
+  bookingId     String         @unique
+  invoiceNumber String?        @unique
+  issueDate     DateTime       @default(now())
+  dueDate       DateTime?
+  total         Decimal        @db.Decimal(10, 2)
+  tax           Decimal        @db.Decimal(10, 2)
+  status        InvoiceStatus  @default(DRAFT)
+  paymentMethod PaymentMethod?
+  pdfUrl        String?
+  notes         String?
+  booking       Booking        @relation(fields: [bookingId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
