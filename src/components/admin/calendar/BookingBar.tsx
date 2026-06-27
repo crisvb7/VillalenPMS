@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import type { BookingWithRelations } from '@/types'
 
-export const STATUS_BG: Record<string, string> = {
+const STATUS_BG: Record<string, string> = {
   PENDING:    'bg-amber-400 hover:bg-amber-500',
   CONFIRMED:  'bg-emerald-500 hover:bg-emerald-600',
   CHECKED_IN: 'bg-blue-500 hover:bg-blue-600',

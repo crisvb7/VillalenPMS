@@ -91,7 +91,7 @@ export function RoomRow({
           const isWeekend = dayOfWeek >= 5
           const hasBooking = bookings.some(
             (b) =>
-              b.status !== 'CANCELLED' &&
+              !['CANCELLED', 'CHECKED_OUT'].includes(b.status) &&
               isWithinInterval(date, {
                 start: new Date(b.checkInDate),
                 end: addDays(new Date(b.checkOutDate), -1),

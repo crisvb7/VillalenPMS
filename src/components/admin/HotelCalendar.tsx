@@ -58,9 +58,9 @@ export function HotelCalendar() {
     const id = crypto.randomUUID()
     setToasts((prev) => [...prev, { id, type, message }])
   }
-  function removeToast(id: string) {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
-  }
+  }, [])
 
   // Stable close handler — prevents Escape listener from re-registering every render
   const handleSlideOverClose = useCallback(() => {
@@ -73,7 +73,6 @@ export function HotelCalendar() {
   }
 
   function handleDragOver(e: React.DragEvent, roomId: string, day: number) {
-    e.preventDefault()
     if (!dragState) return
     const booking = bookings.find((b) => b.id === dragState.bookingId)
     if (!booking) return
@@ -113,8 +112,8 @@ export function HotelCalendar() {
       if (b.id !== booking.id) return b
       return {
         ...b,
-        checkInDate:  newCheckIn,
-        checkOutDate: newCheckOut,
+        checkInDate:  newCheckIn.toISOString() as unknown as Date,
+        checkOutDate: newCheckOut.toISOString() as unknown as Date,
         roomId,
         room: targetRoom ? { ...b.room, id: roomId, name: targetRoom.name } : b.room,
       }
