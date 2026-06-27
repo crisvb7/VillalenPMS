@@ -2,23 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateIcalExport } from '@/lib/ical'
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ roomId: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = await params
+  const platform = req.nextUrl.searchParams.get('platform') ?? undefined
 
-  const bookings = await prisma.booking.findMany({
-    where: {
-      roomId,
-      status: { notIn: ['CANCELLED'] },
-      checkOutDate: { gte: new Date() },
-    },
-    include: { guest: true },
-    orderBy: { checkInDate: 'asc' },
-  })
+  const [bookings, room, blocks] = await Promise.all([
+    prisma.booking.findMany({
+      where: {
+        roomId,
+        status: { notIn: ['CANCELLED'] },
+        checkOutDate: { gte: new Date() },
+      },
+      include: { guest: true },
+      orderBy: { checkInDate: 'asc' },
+    }),
+    prisma.room.findUnique({ where: { id: roomId } }),
+    prisma.availabilityBlock.findMany({
+      where: {
+        roomId,
+        endDate: { gte: new Date() },
+        ...(platform && {
+          platforms: { has: platform },
+        }),
+      },
+    }),
+  ])
 
-  const room = await prisma.room.findUnique({ where: { id: roomId } })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
-  const ical = generateIcalExport(bookings, room.name)
+  const ical = generateIcalExport(bookings, blocks, room.name)
 
   return new NextResponse(ical, {
     headers: {

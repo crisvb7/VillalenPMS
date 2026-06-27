@@ -224,15 +224,16 @@ export async function syncIcalFeed(
   return stats
 }
 
-/** Generate iCal export of our bookings for a room (OTAs subscribe to this) */
+/** Generate iCal export of our bookings + manual blocks for a room */
 export function generateIcalExport(
   bookings: Array<{ externalId: string | null; checkInDate: Date; checkOutDate: Date; guest: { firstName: string; lastName: string } }>,
+  blocks: Array<{ id: string; startDate: Date; endDate: Date }>,
   roomName: string
 ): string {
   const now = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z'
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z'
 
-  const events = bookings
+  const bookingEvents = bookings
     .filter((b) => b.checkOutDate > new Date())
     .map((b) => {
       const uid = b.externalId ?? `pms-${b.checkInDate.getTime()}`
@@ -248,6 +249,19 @@ export function generateIcalExport(
       ].join('\r\n')
     })
 
+  const blockEvents = blocks
+    .filter((bl) => bl.endDate > new Date())
+    .map((bl) => [
+      'BEGIN:VEVENT',
+      `UID:block-${bl.id}`,
+      `DTSTAMP:${now}`,
+      `DTSTART:${fmt(bl.startDate)}`,
+      `DTEND:${fmt(bl.endDate)}`,
+      `SUMMARY:CLOSED - Not available`,
+      `STATUS:CONFIRMED`,
+      'END:VEVENT',
+    ].join('\r\n'))
+
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -255,7 +269,8 @@ export function generateIcalExport(
     `X-WR-CALNAME:${roomName}`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    ...events,
+    ...bookingEvents,
+    ...blockEvents,
     'END:VCALENDAR',
   ].join('\r\n')
 }
