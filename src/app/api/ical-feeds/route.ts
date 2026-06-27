@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const roomId = req.nextUrl.searchParams.get('roomId')
   const feeds = await prisma.iCalFeed.findMany({
+    where: roomId ? { roomId } : undefined,
     include: { room: true },
     orderBy: [{ room: { name: 'asc' } }, { platform: 'asc' }],
   })
