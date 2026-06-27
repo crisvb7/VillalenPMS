@@ -7,6 +7,7 @@ import { CalendarGrid } from './calendar/CalendarGrid'
 import { BookingSlideOver } from './calendar/BookingSlideOver'
 import { Toast, type ToastData } from '@/components/ui/Toast'
 import { NewBookingModal } from './NewBookingModal'
+import { BlockDatesModal } from './BlockDatesModal'
 import type { BookingWithRelations, AvailabilityBlock } from '@/types'
 import type { GhostBar } from './calendar/RoomRow'
 
@@ -42,6 +43,8 @@ export function HotelCalendar() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaults, setModalDefaults] = useState<{ roomId?: string; checkIn?: string; checkOut?: string }>({})
   const [cellMenu, setCellMenu] = useState<CellMenu | null>(null)
+  const [blockModalOpen, setBlockModalOpen] = useState(false)
+  const [blockDatesDefaults, setBlockDatesDefaults] = useState({ start: '', end: '' })
 
   const windowSize = getDaysInMonth(startDate)
   const today = new Date()
@@ -252,7 +255,11 @@ export function HotelCalendar() {
           </button>
           <button
             onClick={() => {
-              // Placeholder: BlockDatesModal opens here in Task 8
+              if (!cellMenu) return
+              setModalDefaults({ roomId: cellMenu.roomId })
+              const dateStr = addDays(startDate, cellMenu.colOffset).toISOString().split('T')[0]
+              setBlockDatesDefaults({ start: dateStr, end: dateStr })
+              setBlockModalOpen(true)
               setCellMenu(null)
             }}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
@@ -275,6 +282,15 @@ export function HotelCalendar() {
         defaultRoomId={modalDefaults.roomId}
         defaultCheckIn={modalDefaults.checkIn}
         defaultCheckOut={modalDefaults.checkOut}
+      />
+
+      <BlockDatesModal
+        open={blockModalOpen}
+        roomId={modalDefaults.roomId ?? null}
+        defaultStart={blockDatesDefaults.start}
+        defaultEnd={blockDatesDefaults.end}
+        onClose={() => setBlockModalOpen(false)}
+        onCreated={() => { load(); addToast('success', 'Fechas bloqueadas') }}
       />
 
       <Toast toasts={toasts} onRemove={removeToast} />
