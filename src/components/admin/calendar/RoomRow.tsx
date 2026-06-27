@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { isSameDay, isWithinInterval, addDays, differenceInCalendarDays } from 'date-fns'
+import { isSameDay, addDays, differenceInCalendarDays } from 'date-fns'
 import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BookingBar } from './BookingBar'
@@ -9,65 +9,59 @@ import type { BookingWithRelations } from '@/types'
 
 export interface GhostBar {
   roomId: string
-  startDay: number   // 1-indexed
+  startCol: number  // 0-indexed offset from startDate
   nights: number
   isValid: boolean
-}
-
-// Day number (1-indexed) in the given month for a date; can be ≤ 0 or > daysInMonth
-function toDayInMonth(date: Date | string, year: number, month: number): number {
-  return differenceInCalendarDays(new Date(date), new Date(year, month, 1)) + 1
 }
 
 interface RoomRowProps {
   room: { id: string; name: string }
   bookings: BookingWithRelations[]
-  year: number
-  month: number
-  daysInMonth: number
+  startDate: Date
+  windowSize: number
   colWidth: number
   roomLabelWidth: number
   today: Date
   draggingBookingId: string | null
   ghostBar: GhostBar | null
-  onCellClick: (roomId: string, day: number) => void
+  onCellClick: (roomId: string, colOffset: number, clientX: number, clientY: number) => void
   onBookingClick: (booking: BookingWithRelations) => void
   onDragStart: (booking: BookingWithRelations, offsetDays: number) => void
-  onDragOver: (e: React.DragEvent, roomId: string, day: number) => void
-  onDrop: (e: React.DragEvent, roomId: string, day: number) => void
+  onDragOver: (e: React.DragEvent, roomId: string, colOffset: number) => void
+  onDrop: (e: React.DragEvent, roomId: string, colOffset: number) => void
 }
 
 export function RoomRow({
-  room, bookings, year, month, daysInMonth, colWidth, roomLabelWidth,
+  room, bookings, startDate, windowSize, colWidth, roomLabelWidth,
   today, draggingBookingId, ghostBar,
   onCellClick, onBookingClick, onDragStart, onDragOver, onDrop,
 }: RoomRowProps) {
   const dayAreaRef = useRef<HTMLDivElement>(null)
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+  const offsets = Array.from({ length: windowSize }, (_, i) => i)
   const isAnyDragging = draggingBookingId !== null
 
-  function getDayFromEvent(e: React.DragEvent): number {
-    if (!dayAreaRef.current) return 1
+  function getColOffsetFromEvent(e: React.DragEvent): number {
+    if (!dayAreaRef.current) return 0
     const rect = dayAreaRef.current.getBoundingClientRect()
     const relX = e.clientX - rect.left
-    return Math.max(1, Math.min(daysInMonth, Math.floor(relX / colWidth) + 1))
+    return Math.max(0, Math.min(windowSize - 1, Math.floor(relX / colWidth)))
   }
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault()
-    onDragOver(e, room.id, getDayFromEvent(e))
+    onDragOver(e, room.id, getColOffsetFromEvent(e))
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
-    onDrop(e, room.id, getDayFromEvent(e))
+    onDrop(e, room.id, getColOffsetFromEvent(e))
   }
 
   const myGhostBar = ghostBar?.roomId === room.id ? ghostBar : null
 
   return (
-    <div className="flex" style={{ height: 52 }}>
-      {/* Room label — sticky left */}
+    <div className="flex" style={{ height: 70 }}>
+      {/* Room label */}
       <div
         className="sticky left-0 z-10 flex flex-none items-center border-r border-slate-100 bg-white px-4"
         style={{ width: roomLabelWidth, minWidth: roomLabelWidth }}
@@ -75,39 +69,40 @@ export function RoomRow({
         <span className="text-sm font-semibold text-slate-700 truncate">{room.name}</span>
       </div>
 
-      {/* Day area — drop zone + bars */}
+      {/* Day area */}
       <div
         ref={dayAreaRef}
         className="relative"
-        style={{ width: daysInMonth * colWidth, minWidth: daysInMonth * colWidth }}
+        style={{ width: windowSize * colWidth, minWidth: windowSize * colWidth }}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
         {/* Background cells */}
-        {days.map((day) => {
-          const date = new Date(year, month, day)
+        {offsets.map((colOffset) => {
+          const date = addDays(startDate, colOffset)
           const isToday = isSameDay(date, today)
           const dayOfWeek = (date.getDay() + 6) % 7
           const isWeekend = dayOfWeek >= 5
-          const hasBooking = bookings.some(
-            (b) =>
+          const hasBooking = bookings.some((b) => {
+            const checkIn = differenceInCalendarDays(new Date(b.checkInDate), startDate)
+            const checkOut = differenceInCalendarDays(new Date(b.checkOutDate), startDate)
+            return (
               !['CANCELLED', 'CHECKED_OUT'].includes(b.status) &&
-              isWithinInterval(date, {
-                start: new Date(b.checkInDate),
-                end: addDays(new Date(b.checkOutDate), -1),
-              })
-          )
+              colOffset >= checkIn &&
+              colOffset < checkOut
+            )
+          })
           return (
             <div
-              key={day}
-              style={{ position: 'absolute', left: (day - 1) * colWidth, width: colWidth, top: 0, bottom: 0 }}
+              key={colOffset}
+              style={{ position: 'absolute', left: colOffset * colWidth, width: colWidth, top: 0, bottom: 0 }}
               className={cn(
                 'border-r border-slate-100 group',
                 isToday && !hasBooking && 'bg-indigo-50/50',
                 isWeekend && !isToday && 'bg-slate-50/60',
                 !hasBooking && !isAnyDragging && 'hover:bg-indigo-50 cursor-pointer',
               )}
-              onClick={() => !hasBooking && !isAnyDragging && onCellClick(room.id, day)}
+              onClick={(e) => !hasBooking && !isAnyDragging && onCellClick(room.id, colOffset, e.clientX, e.clientY)}
             >
               {!hasBooking && !isAnyDragging && (
                 <div className="flex h-full items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
@@ -119,22 +114,26 @@ export function RoomRow({
         })}
 
         {/* Booking bars */}
-        {bookings.map((booking) => (
-          <BookingBar
-            key={booking.id}
-            booking={booking}
-            checkInDay={toDayInMonth(booking.checkInDate, year, month)}
-            checkOutDay={toDayInMonth(booking.checkOutDate, year, month)}
-            daysInMonth={daysInMonth}
-            colWidth={colWidth}
-            isAnyDragging={isAnyDragging}
-            isThisBeingDragged={booking.id === draggingBookingId}
-            onClick={onBookingClick}
-            onDragStart={onDragStart}
-          />
-        ))}
+        {bookings.map((booking) => {
+          const checkInOffset  = differenceInCalendarDays(new Date(booking.checkInDate), startDate)
+          const checkOutOffset = differenceInCalendarDays(new Date(booking.checkOutDate), startDate)
+          return (
+            <BookingBar
+              key={booking.id}
+              booking={booking}
+              checkInOffset={checkInOffset}
+              checkOutOffset={checkOutOffset}
+              windowSize={windowSize}
+              colWidth={colWidth}
+              isAnyDragging={isAnyDragging}
+              isThisBeingDragged={booking.id === draggingBookingId}
+              onClick={onBookingClick}
+              onDragStart={onDragStart}
+            />
+          )
+        })}
 
-        {/* Ghost bar preview during drag */}
+        {/* Ghost bar */}
         {myGhostBar && (
           <div
             className={cn(
@@ -144,7 +143,7 @@ export function RoomRow({
                 : 'bg-red-200/50 border-red-400'
             )}
             style={{
-              left:   Math.max(0, myGhostBar.startDay - 1) * colWidth + 2,
+              left:   Math.max(0, myGhostBar.startCol) * colWidth + 2,
               width:  myGhostBar.nights * colWidth - 4,
               top: 6,
               height: 40,

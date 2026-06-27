@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { format } from 'date-fns'
+import { getMonth, getYear, getDaysInMonth } from 'date-fns'
 
 const STATUS_LEGEND = [
   { key: 'PENDING',    label: 'Pendiente',  color: 'bg-amber-400'  },
@@ -8,19 +8,53 @@ const STATUS_LEGEND = [
   { key: 'CHECKED_OUT',label: 'Finalizada', color: 'bg-slate-400'  },
 ] as const
 
+const MONTHS_ES = [
+  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
+]
+
+const YEARS = Array.from({ length: 6 }, (_, i) => 2024 + i)
+
 interface CalendarHeaderProps {
-  currentDate: Date
-  onPrevMonth: () => void
-  onNextMonth: () => void
+  startDate: Date
+  onPrevDay: () => void
+  onNextDay: () => void
   onToday: () => void
+  onMonthYearChange: (year: number, month: number) => void
 }
 
-export function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: CalendarHeaderProps) {
+export function CalendarHeader({
+  startDate, onPrevDay, onNextDay, onToday, onMonthYearChange,
+}: CalendarHeaderProps) {
+  const currentMonth = getMonth(startDate)
+  const currentYear  = getYear(startDate)
+
   return (
     <div className="flex items-center justify-between border-b border-slate-100 px-6 py-3">
-      <h2 className="text-sm font-bold capitalize text-slate-800">
-        {format(currentDate, 'MMMM yyyy')}
-      </h2>
+      <div className="flex items-center gap-2">
+        <select
+          value={currentMonth}
+          onChange={(e) => onMonthYearChange(currentYear, Number(e.target.value))}
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        >
+          {MONTHS_ES.map((name, idx) => (
+            <option key={idx} value={idx}>{name}</option>
+          ))}
+        </select>
+        <select
+          value={currentYear}
+          onChange={(e) => onMonthYearChange(Number(e.target.value), currentMonth)}
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        >
+          {YEARS.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <span className="ml-1 text-xs text-slate-400">
+          ({getDaysInMonth(startDate)} días)
+        </span>
+      </div>
+
       <div className="flex items-center gap-4">
         <div className="hidden items-center gap-3 sm:flex">
           {STATUS_LEGEND.map(({ key, label, color }) => (
@@ -32,8 +66,9 @@ export function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday 
         </div>
         <div className="flex items-center gap-1 border-l border-slate-200 pl-4">
           <button
-            onClick={onPrevMonth}
+            onClick={onPrevDay}
             className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors"
+            title="Día anterior"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -44,8 +79,9 @@ export function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday 
             Hoy
           </button>
           <button
-            onClick={onNextMonth}
+            onClick={onNextDay}
             className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors"
+            title="Día siguiente"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

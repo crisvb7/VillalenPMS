@@ -9,11 +9,18 @@ const STATUS_BG: Record<string, string> = {
   CANCELLED:  'bg-red-400',
 }
 
+const SOURCE_BADGE: Record<string, string> = {
+  BOOKING: 'B',
+  AIRBNB:  'A',
+  WEB:     'W',
+  MANUAL:  'M',
+}
+
 interface BookingBarProps {
   booking: BookingWithRelations
-  checkInDay: number
-  checkOutDay: number
-  daysInMonth: number
+  checkInOffset: number   // 0-indexed from startDate, can be negative
+  checkOutOffset: number  // exclusive, can exceed windowSize
+  windowSize: number
   colWidth: number
   isAnyDragging: boolean
   isThisBeingDragged: boolean
@@ -22,37 +29,30 @@ interface BookingBarProps {
 }
 
 export function BookingBar({
-  booking,
-  checkInDay,
-  checkOutDay,
-  daysInMonth,
-  colWidth,
-  isAnyDragging,
-  isThisBeingDragged,
-  onClick,
-  onDragStart,
+  booking, checkInOffset, checkOutOffset, windowSize, colWidth,
+  isAnyDragging, isThisBeingDragged, onClick, onDragStart,
 }: BookingBarProps) {
-  // Clamp display range to current month
-  const displayStart = Math.max(0, checkInDay - 1) // 0-indexed column
-  const displayEnd   = Math.min(daysInMonth, checkOutDay - 1) // exclusive
+  const displayStart = Math.max(0, checkInOffset)
+  const displayEnd   = Math.min(windowSize, checkOutOffset)
   const displayNights = displayEnd - displayStart
   if (displayNights <= 0) return null
 
   const canDrag = !['CANCELLED', 'CHECKED_OUT'].includes(booking.status)
-  const startsThisMonth = checkInDay >= 1
-  const endsThisMonth   = checkOutDay <= daysInMonth + 1
+  const startsInWindow = checkInOffset >= 0
+  const endsInWindow   = checkOutOffset <= windowSize
 
   function handleDragStart(e: React.DragEvent) {
     if (!canDrag) { e.preventDefault(); return }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const mouseRelX = Math.max(0, e.clientX - rect.left)
     const offsetFromBarStart = Math.floor(mouseRelX / colWidth)
-    // Days of the booking clipped off on the left (started before this month)
-    const clippedDays = Math.max(0, 1 - checkInDay)
+    const clippedDays = Math.max(0, -checkInOffset)
     const offsetDays = clippedDays + offsetFromBarStart
     e.dataTransfer.effectAllowed = 'move'
     onDragStart(booking, offsetDays)
   }
+
+  const badge = SOURCE_BADGE[booking.source] ?? 'M'
 
   return (
     <div
@@ -70,15 +70,18 @@ export function BookingBar({
         'flex items-center overflow-hidden transition-opacity select-none',
         canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
         STATUS_BG[booking.status] ?? 'bg-slate-400',
-        startsThisMonth && endsThisMonth  && 'rounded-full',
-        startsThisMonth && !endsThisMonth && 'rounded-l-full',
-        !startsThisMonth && endsThisMonth && 'rounded-r-full',
+        startsInWindow && endsInWindow  && 'rounded-full',
+        startsInWindow && !endsInWindow && 'rounded-l-full',
+        !startsInWindow && endsInWindow && 'rounded-r-full',
         isThisBeingDragged && 'opacity-40',
         isAnyDragging && !isThisBeingDragged && 'pointer-events-none',
       )}
     >
-      <span className="truncate px-3 text-xs font-semibold text-white">
+      <span className="flex-1 truncate px-3 text-xs font-semibold text-white">
         {booking.guest.firstName}
+      </span>
+      <span className="mr-2 flex-shrink-0 rounded bg-black/20 px-1 text-[9px] font-bold text-white/90">
+        {badge}
       </span>
     </div>
   )

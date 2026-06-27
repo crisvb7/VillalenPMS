@@ -17,8 +17,19 @@ interface DragState {
   offsetDays: number
 }
 
+interface CellMenu {
+  roomId: string
+  colOffset: number
+  x: number
+  y: number
+}
+
 export function HotelCalendar() {
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
   const [rooms, setRooms] = useState<Room[]>([])
   const [bookings, setBookings] = useState<BookingWithRelations[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,17 +40,16 @@ export function HotelCalendar() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaults, setModalDefaults] = useState<{ roomId?: string; checkIn?: string; checkOut?: string }>({})
+  const [cellMenu, setCellMenu] = useState<CellMenu | null>(null)
 
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
-  const daysInMonth = getDaysInMonth(currentDate)
+  const windowSize = getDaysInMonth(startDate)
   const today = new Date()
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const from = new Date(year, month, 1).toISOString()
-      const to   = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
+      const from = startDate.toISOString()
+      const to   = addDays(startDate, windowSize).toISOString()
       const [r, b] = await Promise.all([
         fetch('/api/rooms').then((res) => res.json()),
         fetch(`/api/bookings?from=${from}&to=${to}`).then((res) => res.json()),
@@ -49,11 +59,18 @@ export function HotelCalendar() {
     } finally {
       setLoading(false)
     }
-  }, [year, month])
+  }, [startDate, windowSize])
 
   useEffect(() => { load() }, [load])
 
-  // --- Toast helpers ---
+  // Close cell menu on outside click
+  useEffect(() => {
+    if (!cellMenu) return
+    function handler() { setCellMenu(null) }
+    window.addEventListener('click', handler)
+    return () => window.removeEventListener('click', handler)
+  }, [cellMenu])
+
   function addToast(type: 'success' | 'error', message: string) {
     const id = crypto.randomUUID()
     setToasts((prev) => [...prev, { id, type, message }])
@@ -62,25 +79,21 @@ export function HotelCalendar() {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  // Stable close handler — prevents Escape listener from re-registering every render
-  const handleSlideOverClose = useCallback(() => {
-    setSelectedBooking(null)
-  }, [])
+  const handleSlideOverClose = useCallback(() => setSelectedBooking(null), [])
 
-  // --- Drag handlers ---
   function handleDragStart(booking: BookingWithRelations, offsetDays: number) {
     setDragState({ bookingId: booking.id, offsetDays })
   }
 
-  function handleDragOver(e: React.DragEvent, roomId: string, day: number) {
+  function handleDragOver(e: React.DragEvent, roomId: string, colOffset: number) {
     if (!dragState) return
     const booking = bookings.find((b) => b.id === dragState.bookingId)
     if (!booking) return
 
-    const newCheckIn  = new Date(year, month, day - dragState.offsetDays)
+    const newCheckIn  = addDays(startDate, colOffset - dragState.offsetDays)
     const nights      = differenceInCalendarDays(new Date(booking.checkOutDate), new Date(booking.checkInDate))
     const newCheckOut = addDays(newCheckIn, nights)
-    const startDay    = differenceInCalendarDays(newCheckIn, new Date(year, month, 1)) + 1
+    const startCol    = differenceInCalendarDays(newCheckIn, startDate)
 
     const conflict = bookings.some(
       (b) =>
@@ -91,22 +104,21 @@ export function HotelCalendar() {
         new Date(b.checkOutDate) > newCheckIn
     )
 
-    setGhostBar({ roomId, startDay, nights, isValid: !conflict })
+    setGhostBar({ roomId, startCol, nights, isValid: !conflict })
   }
 
-  function handleDrop(e: React.DragEvent, roomId: string, day: number) {
+  function handleDrop(e: React.DragEvent, roomId: string, colOffset: number) {
     e.preventDefault()
     if (!dragState || !ghostBar || !ghostBar.isValid) return
 
     const booking = bookings.find((b) => b.id === dragState.bookingId)
     if (!booking) return
 
-    const newCheckIn  = new Date(year, month, day - dragState.offsetDays)
+    const newCheckIn  = addDays(startDate, colOffset - dragState.offsetDays)
     const nights      = differenceInCalendarDays(new Date(booking.checkOutDate), new Date(booking.checkInDate))
     const newCheckOut = addDays(newCheckIn, nights)
     const previousBookings = bookings
 
-    // Optimistic update
     const targetRoom = rooms.find((r) => r.id === roomId)
     const updated = bookings.map((b): BookingWithRelations => {
       if (b.id !== booking.id) return b
@@ -122,7 +134,6 @@ export function HotelCalendar() {
     setDragState(null)
     setGhostBar(null)
 
-    // API call with rollback on error
     ;(async () => {
       try {
         const res = await fetch(`/api/bookings/${booking.id}`, {
@@ -152,7 +163,6 @@ export function HotelCalendar() {
     setGhostBar(null)
   }
 
-  // --- Status change (from slide-over) ---
   async function handleStatusChange(id: string, status: string) {
     setUpdatingId(id)
     try {
@@ -172,22 +182,32 @@ export function HotelCalendar() {
     }
   }
 
-  // --- Cell click (new booking) ---
-  function handleCellClick(roomId: string, day: number) {
-    const checkIn  = new Date(year, month, day).toISOString().split('T')[0]
-    const checkOut = new Date(year, month, day + 1).toISOString().split('T')[0]
-    setModalDefaults({ roomId, checkIn, checkOut })
+  function handleCellClick(roomId: string, colOffset: number, clientX: number, clientY: number) {
+    setCellMenu({ roomId, colOffset, x: clientX, y: clientY })
+  }
+
+  function openNewBooking() {
+    if (!cellMenu) return
+    const checkIn  = addDays(startDate, cellMenu.colOffset).toISOString().split('T')[0]
+    const checkOut = addDays(startDate, cellMenu.colOffset + 1).toISOString().split('T')[0]
+    setModalDefaults({ roomId: cellMenu.roomId, checkIn, checkOut })
     setModalOpen(true)
+    setCellMenu(null)
   }
 
   return (
     <>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <CalendarHeader
-          currentDate={currentDate}
-          onPrevMonth={() => setCurrentDate(new Date(year, month - 1, 1))}
-          onNextMonth={() => setCurrentDate(new Date(year, month + 1, 1))}
-          onToday={() => setCurrentDate(new Date())}
+          startDate={startDate}
+          onPrevDay={() => setStartDate((d) => addDays(d, -1))}
+          onNextDay={() => setStartDate((d) => addDays(d, 1))}
+          onToday={() => {
+            const d = new Date()
+            d.setHours(0, 0, 0, 0)
+            setStartDate(d)
+          }}
+          onMonthYearChange={(year, month) => setStartDate(new Date(year, month, 1))}
         />
 
         {loading ? (
@@ -196,9 +216,8 @@ export function HotelCalendar() {
           </div>
         ) : (
           <CalendarGrid
-            year={year}
-            month={month}
-            daysInMonth={daysInMonth}
+            startDate={startDate}
+            windowSize={windowSize}
             rooms={rooms}
             bookings={bookings}
             today={today}
@@ -213,6 +232,31 @@ export function HotelCalendar() {
           />
         )}
       </div>
+
+      {/* Cell action menu */}
+      {cellMenu && (
+        <div
+          className="fixed z-50 rounded-xl border border-slate-200 bg-white shadow-xl py-1 min-w-[160px]"
+          style={{ top: cellMenu.y + 8, left: cellMenu.x - 80 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={openNewBooking}
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Nueva reserva
+          </button>
+          <button
+            onClick={() => {
+              // Placeholder: BlockDatesModal opens here in Task 8
+              setCellMenu(null)
+            }}
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Bloquear fechas
+          </button>
+        </div>
+      )}
 
       <BookingSlideOver
         booking={selectedBooking}
