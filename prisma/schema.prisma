@@ -16,6 +16,7 @@ model Room {
   channexRoomTypeId  String?
   bookings           Booking[]
   icalFeeds          ICalFeed[]
+  availabilityBlocks AvailabilityBlock[]
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 }
@@ -103,6 +104,20 @@ model Booking {
   invoice      Invoice?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+}
+
+model AvailabilityBlock {
+  id         String   @id @default(cuid())
+  roomId     String
+  startDate  DateTime
+  endDate    DateTime
+  platforms  String[]
+  reason     String?
+  externalId String?  @unique
+  source     String   @default("manual")
+  room       Room     @relation(fields: [roomId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Invoice {

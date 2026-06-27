@@ -1,4 +1,5 @@
 import type {
+  AvailabilityBlock,
   Booking,
   BookingSource,
   BookingStatus,
@@ -10,7 +11,7 @@ import type {
   Room,
 } from '@/db/client'
 
-export type { Booking, BookingSource, BookingStatus, ChannelConfig, Guest, Invoice, InvoiceStatus, PaymentMethod, Room }
+export type { AvailabilityBlock, Booking, BookingSource, BookingStatus, ChannelConfig, Guest, Invoice, InvoiceStatus, PaymentMethod, Room }
 
 export type BookingWithRelations = Booking & {
   guest: Guest
