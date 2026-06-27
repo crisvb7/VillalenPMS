@@ -96,6 +96,14 @@ function extractGuestName(event: ICalEvent): { firstName: string; lastName: stri
   return { firstName: 'Huésped', lastName: `iCal-${event.uid.slice(-6)}` }
 }
 
+const BLOCKED_SUMMARIES = ['closed', 'not available', 'not_available', 'blocked', 'unavailable']
+
+function isBlockedEvent(event: ICalEvent): boolean {
+  const summary = (event.summary ?? '').toLowerCase()
+  const desc    = (event.description ?? '').toLowerCase()
+  return BLOCKED_SUMMARIES.some((k) => summary.includes(k) || desc.includes(k))
+}
+
 export async function syncIcalFeed(
   feedId: string,
   roomId: string,
@@ -131,7 +139,29 @@ export async function syncIcalFeed(
       continue
     }
 
-    // Skip if already imported
+    // Handle blocked/closed events (e.g. Booking.com "CLOSED - Not available")
+    if (isBlockedEvent(event)) {
+      const existingBlock = await prisma.availabilityBlock.findUnique({ where: { externalId } })
+      if (!existingBlock) {
+        await prisma.availabilityBlock.create({
+          data: {
+            roomId,
+            startDate: event.start,
+            endDate:   event.end,
+            platforms: [platform],
+            reason:    event.summary ?? 'CLOSED',
+            externalId,
+            source:    'ical_sync',
+          },
+        })
+        stats.created++
+      } else {
+        stats.skipped++
+      }
+      continue
+    }
+
+    // Skip if already imported as booking
     const exists = await prisma.booking.findUnique({ where: { externalId } })
     if (exists) { stats.skipped++; continue }
 
