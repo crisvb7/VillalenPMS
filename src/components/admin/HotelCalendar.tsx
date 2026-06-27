@@ -37,15 +37,18 @@ export function HotelCalendar() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const from = new Date(year, month, 1).toISOString()
-    const to   = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
-    const [r, b] = await Promise.all([
-      fetch('/api/rooms').then((res) => res.json()),
-      fetch(`/api/bookings?from=${from}&to=${to}`).then((res) => res.json()),
-    ])
-    setRooms(r)
-    setBookings(b)
-    setLoading(false)
+    try {
+      const from = new Date(year, month, 1).toISOString()
+      const to   = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
+      const [r, b] = await Promise.all([
+        fetch('/api/rooms').then((res) => res.json()),
+        fetch(`/api/bookings?from=${from}&to=${to}`).then((res) => res.json()),
+      ])
+      setRooms(r)
+      setBookings(b)
+    } finally {
+      setLoading(false)
+    }
   }, [year, month])
 
   useEffect(() => { load() }, [load])
