@@ -24,10 +24,33 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params
     const body = await req.json()
-    const { status, depositPaid, notes, checkInDate, checkOutDate } = body
+    const { status, depositPaid, notes, checkInDate, checkOutDate, roomId } = body
 
     const before = await prisma.booking.findUnique({ where: { id }, include: { room: true } })
     if (!before) return NextResponse.json({ error: 'No encontrada' }, { status: 404 })
+
+    // Anti-overbooking: validar si cambian habitación o fechas
+    if (roomId !== undefined || checkInDate !== undefined || checkOutDate !== undefined) {
+      const targetRoomId = roomId ?? before.roomId
+      const targetCheckIn = checkInDate ? new Date(checkInDate) : before.checkInDate
+      const targetCheckOut = checkOutDate ? new Date(checkOutDate) : before.checkOutDate
+
+      const conflict = await prisma.booking.findFirst({
+        where: {
+          id: { not: id },
+          roomId: targetRoomId,
+          status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+          checkInDate: { lt: targetCheckOut },
+          checkOutDate: { gt: targetCheckIn },
+        },
+      })
+      if (conflict) {
+        return NextResponse.json(
+          { error: 'La habitación ya está ocupada en esas fechas' },
+          { status: 409 }
+        )
+      }
+    }
 
     const booking = await prisma.booking.update({
       where: { id },
@@ -37,24 +60,36 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...(notes !== undefined && { notes }),
         ...(checkInDate !== undefined && { checkInDate: new Date(checkInDate) }),
         ...(checkOutDate !== undefined && { checkOutDate: new Date(checkOutDate) }),
+        ...(roomId !== undefined && { roomId }),
       },
       include: { guest: true, room: true },
     })
 
-    const roomTypeId = before.room.channexRoomTypeId
-    if (roomTypeId) {
-      const wasCancelled = before.status === 'CANCELLED'
-      const isCancelled = status === 'CANCELLED'
+    // Channex: sincronizar disponibilidad
+    const becomingCancelled = status === 'CANCELLED' && before.status !== 'CANCELLED'
+    const roomChanged = roomId !== undefined && roomId !== before.roomId
+    const datesOrRoomChanged = roomChanged || checkInDate !== undefined || checkOutDate !== undefined
 
-      if (!wasCancelled && isCancelled) {
-        // Booking cancelled → open dates
-        pushAvailability(roomTypeId, before.checkInDate, before.checkOutDate, 1).catch(console.error)
-      } else if (checkInDate || checkOutDate) {
-        // Dates changed → open old range, block new range
-        const newIn = checkInDate ? new Date(checkInDate) : before.checkInDate
-        const newOut = checkOutDate ? new Date(checkOutDate) : before.checkOutDate
-        pushAvailability(roomTypeId, before.checkInDate, before.checkOutDate, 1).catch(console.error)
-        pushAvailability(roomTypeId, newIn, newOut, 0).catch(console.error)
+    if (becomingCancelled) {
+      if (before.room.channexRoomTypeId) {
+        pushAvailability(before.room.channexRoomTypeId, before.checkInDate, before.checkOutDate, 1).catch(console.error)
+      }
+    } else if (datesOrRoomChanged && before.status !== 'CANCELLED') {
+      const newCheckIn = checkInDate ? new Date(checkInDate) : before.checkInDate
+      const newCheckOut = checkOutDate ? new Date(checkOutDate) : before.checkOutDate
+      // Abrir slot antiguo
+      if (before.room.channexRoomTypeId) {
+        pushAvailability(before.room.channexRoomTypeId, before.checkInDate, before.checkOutDate, 1).catch(console.error)
+      }
+      if (roomChanged) {
+        // Bloquear slot en habitación nueva
+        const newRoom = await prisma.room.findUnique({ where: { id: roomId } })
+        if (newRoom?.channexRoomTypeId) {
+          pushAvailability(newRoom.channexRoomTypeId, newCheckIn, newCheckOut, 0).catch(console.error)
+        }
+      } else if (before.room.channexRoomTypeId) {
+        // Misma habitación, fechas cambiadas — bloquear nuevas fechas
+        pushAvailability(before.room.channexRoomTypeId, newCheckIn, newCheckOut, 0).catch(console.error)
       }
     }
 
