@@ -7,7 +7,7 @@ import { CalendarGrid } from './calendar/CalendarGrid'
 import { BookingSlideOver } from './calendar/BookingSlideOver'
 import { Toast, type ToastData } from '@/components/ui/Toast'
 import { NewBookingModal } from './NewBookingModal'
-import type { BookingWithRelations } from '@/types'
+import type { BookingWithRelations, AvailabilityBlock } from '@/types'
 import type { GhostBar } from './calendar/RoomRow'
 
 interface Room { id: string; name: string }
@@ -32,6 +32,7 @@ export function HotelCalendar() {
   })
   const [rooms, setRooms] = useState<Room[]>([])
   const [bookings, setBookings] = useState<BookingWithRelations[]>([])
+  const [blocks, setBlocks] = useState<AvailabilityBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState<BookingWithRelations | null>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
@@ -50,12 +51,14 @@ export function HotelCalendar() {
     try {
       const from = startDate.toISOString()
       const to   = addDays(startDate, windowSize).toISOString()
-      const [r, b] = await Promise.all([
+      const [r, b, bl] = await Promise.all([
         fetch('/api/rooms').then((res) => res.json()),
         fetch(`/api/bookings?from=${from}&to=${to}`).then((res) => res.json()),
+        fetch(`/api/availability-blocks?from=${from}&to=${to}`).then((res) => res.json()),
       ])
       setRooms(r)
       setBookings(b)
+      setBlocks(bl)
     } finally {
       setLoading(false)
     }
@@ -220,6 +223,7 @@ export function HotelCalendar() {
             windowSize={windowSize}
             rooms={rooms}
             bookings={bookings}
+            blocks={blocks}
             today={today}
             draggingBookingId={dragState?.bookingId ?? null}
             ghostBar={ghostBar}

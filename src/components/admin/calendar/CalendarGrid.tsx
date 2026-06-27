@@ -1,6 +1,6 @@
 import { DayHeaders } from './DayHeaders'
 import { RoomRow, type GhostBar } from './RoomRow'
-import type { BookingWithRelations } from '@/types'
+import type { BookingWithRelations, AvailabilityBlock } from '@/types'
 
 export const COL_WIDTH = 36
 export const ROOM_LABEL_WIDTH = 160
@@ -10,6 +10,7 @@ interface CalendarGridProps {
   windowSize: number
   rooms: { id: string; name: string }[]
   bookings: BookingWithRelations[]
+  blocks: AvailabilityBlock[]
   today: Date
   draggingBookingId: string | null
   ghostBar: GhostBar | null
@@ -22,7 +23,7 @@ interface CalendarGridProps {
 }
 
 export function CalendarGrid({
-  startDate, windowSize, rooms, bookings, today,
+  startDate, windowSize, rooms, bookings, blocks, today,
   draggingBookingId, ghostBar,
   onCellClick, onBookingClick, onDragStart, onDragOver, onDrop, onDragEnd,
 }: CalendarGridProps) {
@@ -51,6 +52,7 @@ export function CalendarGrid({
               key={room.id}
               room={room}
               bookings={bookings.filter((b) => b.roomId === room.id)}
+              blocks={blocks.filter((bl) => bl.roomId === room.id)}
               startDate={startDate}
               windowSize={windowSize}
               colWidth={COL_WIDTH}

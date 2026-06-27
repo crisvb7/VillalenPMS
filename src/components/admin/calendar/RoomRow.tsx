@@ -5,7 +5,8 @@ import { isSameDay, addDays, differenceInCalendarDays } from 'date-fns'
 import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BookingBar } from './BookingBar'
-import type { BookingWithRelations } from '@/types'
+import { BlockBar } from './BlockBar'
+import type { BookingWithRelations, AvailabilityBlock } from '@/types'
 
 export interface GhostBar {
   roomId: string
@@ -17,6 +18,7 @@ export interface GhostBar {
 interface RoomRowProps {
   room: { id: string; name: string }
   bookings: BookingWithRelations[]
+  blocks: AvailabilityBlock[]
   startDate: Date
   windowSize: number
   colWidth: number
@@ -32,7 +34,7 @@ interface RoomRowProps {
 }
 
 export function RoomRow({
-  room, bookings, startDate, windowSize, colWidth, roomLabelWidth,
+  room, bookings, blocks, startDate, windowSize, colWidth, roomLabelWidth,
   today, draggingBookingId, ghostBar,
   onCellClick, onBookingClick, onDragStart, onDragOver, onDrop,
 }: RoomRowProps) {
@@ -129,6 +131,23 @@ export function RoomRow({
               isThisBeingDragged={booking.id === draggingBookingId}
               onClick={onBookingClick}
               onDragStart={onDragStart}
+            />
+          )
+        })}
+
+        {/* Availability block bars */}
+        {blocks.map((block, idx) => {
+          const startOffset = differenceInCalendarDays(new Date(block.startDate), startDate)
+          const endOffset   = differenceInCalendarDays(new Date(block.endDate),   startDate)
+          return (
+            <BlockBar
+              key={block.id}
+              block={block}
+              startOffset={startOffset}
+              endOffset={endOffset}
+              windowSize={windowSize}
+              colWidth={colWidth}
+              stackIndex={idx % 3}
             />
           )
         })}
