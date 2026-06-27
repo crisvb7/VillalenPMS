@@ -12,14 +12,15 @@ function getPlatformStyle(platform: string) {
 
 interface BlockBarProps {
   block: AvailabilityBlock
-  startOffset: number   // 0-indexed from startDate (can be negative)
-  endOffset: number     // exclusive (can exceed windowSize)
+  startOffset: number
+  endOffset: number
   windowSize: number
   colWidth: number
-  stackIndex: number    // 0 = bottom-most, stacks upward
+  stackIndex: number
+  onDelete: (id: string, x: number, y: number) => void
 }
 
-export function BlockBar({ block, startOffset, endOffset, windowSize, colWidth, stackIndex }: BlockBarProps) {
+export function BlockBar({ block, startOffset, endOffset, windowSize, colWidth, stackIndex, onDelete }: BlockBarProps) {
   const displayStart  = Math.max(0, startOffset)
   const displayEnd    = Math.min(windowSize, endOffset)
   const displayNights = displayEnd - displayStart
@@ -39,6 +40,8 @@ export function BlockBar({ block, startOffset, endOffset, windowSize, colWidth, 
   return (
     <div
       title={tooltip}
+      onClick={(e) => { e.stopPropagation(); onDelete(block.id, e.clientX, e.clientY) }}
+      className="cursor-pointer"
       style={{
         position: 'absolute',
         left:     displayStart * colWidth + 1,

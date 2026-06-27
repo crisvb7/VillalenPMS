@@ -141,6 +141,13 @@ export async function syncIcalFeed(
 
     // Handle blocked/closed events (e.g. Booking.com "CLOSED - Not available")
     if (isBlockedEvent(event)) {
+      // Cancel any fake booking that may have been created for this event before the fix
+      const fakeBooking = await prisma.booking.findUnique({ where: { externalId } })
+      if (fakeBooking && fakeBooking.status !== 'CANCELLED') {
+        await prisma.booking.update({ where: { id: fakeBooking.id }, data: { status: 'CANCELLED' } })
+        stats.cancelled++
+      }
+
       const existingBlock = await prisma.availabilityBlock.findUnique({ where: { externalId } })
       if (!existingBlock) {
         await prisma.availabilityBlock.create({

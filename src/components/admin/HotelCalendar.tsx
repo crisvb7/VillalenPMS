@@ -43,6 +43,7 @@ export function HotelCalendar() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDefaults, setModalDefaults] = useState<{ roomId?: string; checkIn?: string; checkOut?: string }>({})
   const [cellMenu, setCellMenu] = useState<CellMenu | null>(null)
+  const [blockMenu, setBlockMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [blockModalOpen, setBlockModalOpen] = useState(false)
   const [blockDatesDefaults, setBlockDatesDefaults] = useState({ start: '', end: '' })
 
@@ -69,13 +70,13 @@ export function HotelCalendar() {
 
   useEffect(() => { load() }, [load])
 
-  // Close cell menu on outside click
+  // Close cell/block menus on outside click
   useEffect(() => {
-    if (!cellMenu) return
-    function handler() { setCellMenu(null) }
+    if (!cellMenu && !blockMenu) return
+    function handler() { setCellMenu(null); setBlockMenu(null) }
     window.addEventListener('click', handler)
     return () => window.removeEventListener('click', handler)
-  }, [cellMenu])
+  }, [cellMenu, blockMenu])
 
   function addToast(type: 'success' | 'error', message: string) {
     const id = crypto.randomUUID()
@@ -192,6 +193,18 @@ export function HotelCalendar() {
     setCellMenu({ roomId, colOffset, x: clientX, y: clientY })
   }
 
+  async function deleteBlock(id: string) {
+    setBlockMenu(null)
+    try {
+      const res = await fetch(`/api/availability-blocks/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Error al eliminar')
+      await load()
+      addToast('success', 'Bloqueo eliminado')
+    } catch {
+      addToast('error', 'Error al eliminar el bloqueo')
+    }
+  }
+
   function openNewBooking() {
     if (!cellMenu) return
     const checkIn  = addDays(startDate, cellMenu.colOffset).toISOString().split('T')[0]
@@ -232,6 +245,7 @@ export function HotelCalendar() {
             ghostBar={ghostBar}
             onCellClick={handleCellClick}
             onBookingClick={setSelectedBooking}
+            onBlockDelete={(id, x, y) => setBlockMenu({ id, x, y })}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -265,6 +279,22 @@ export function HotelCalendar() {
             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
           >
             Bloquear fechas
+          </button>
+        </div>
+      )}
+
+      {/* Block action menu */}
+      {blockMenu && (
+        <div
+          className="fixed z-50 rounded-xl border border-slate-200 bg-white shadow-xl py-1 min-w-[160px]"
+          style={{ top: blockMenu.y + 8, left: blockMenu.x - 80 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => deleteBlock(blockMenu.id)}
+            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+          >
+            Eliminar bloqueo
           </button>
         </div>
       )}

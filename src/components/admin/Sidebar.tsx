@@ -35,30 +35,37 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       style={{ background: '#163300' }}
     >
       {/* Header */}
-      <div className="flex h-16 items-center border-b border-white/10 px-3 gap-2">
-        <div
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
-          style={{ background: '#9FE870' }}
-        >
-          <Home className="h-4 w-4" style={{ color: '#163300' }} />
+      {collapsed ? (
+        <div className="flex h-16 items-center justify-center border-b border-white/10">
+          <button
+            onClick={onToggle}
+            className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            title="Expandir menú"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
         </div>
-        {!collapsed && (
+      ) : (
+        <div className="flex h-16 items-center border-b border-white/10 px-3 gap-2">
+          <div
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+            style={{ background: '#9FE870' }}
+          >
+            <Home className="h-4 w-4" style={{ color: '#163300' }} />
+          </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-semibold text-white truncate">Casa La Aldea</p>
             <p className="text-xs text-white/50">PMS · Gestión</p>
           </div>
-        )}
-        <button
-          onClick={onToggle}
-          className="flex-shrink-0 rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
-          title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-        >
-          {collapsed
-            ? <PanelLeftOpen className="h-4 w-4" />
-            : <PanelLeftClose className="h-4 w-4" />
-          }
-        </button>
-      </div>
+          <button
+            onClick={onToggle}
+            className="flex-shrink-0 rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            title="Colapsar menú"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4">

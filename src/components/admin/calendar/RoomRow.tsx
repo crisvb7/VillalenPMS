@@ -28,6 +28,7 @@ interface RoomRowProps {
   ghostBar: GhostBar | null
   onCellClick: (roomId: string, colOffset: number, clientX: number, clientY: number) => void
   onBookingClick: (booking: BookingWithRelations) => void
+  onBlockDelete: (id: string, x: number, y: number) => void
   onDragStart: (booking: BookingWithRelations, offsetDays: number) => void
   onDragOver: (e: React.DragEvent, roomId: string, colOffset: number) => void
   onDrop: (e: React.DragEvent, roomId: string, colOffset: number) => void
@@ -36,7 +37,7 @@ interface RoomRowProps {
 export function RoomRow({
   room, bookings, blocks, startDate, windowSize, colWidth, roomLabelWidth,
   today, draggingBookingId, ghostBar,
-  onCellClick, onBookingClick, onDragStart, onDragOver, onDrop,
+  onCellClick, onBookingClick, onBlockDelete, onDragStart, onDragOver, onDrop,
 }: RoomRowProps) {
   const dayAreaRef = useRef<HTMLDivElement>(null)
   const offsets = Array.from({ length: windowSize }, (_, i) => i)
@@ -104,7 +105,12 @@ export function RoomRow({
                 isWeekend && !isToday && 'bg-slate-50/60',
                 !hasBooking && !isAnyDragging && 'hover:bg-indigo-50 cursor-pointer',
               )}
-              onClick={(e) => !hasBooking && !isAnyDragging && onCellClick(room.id, colOffset, e.clientX, e.clientY)}
+              onClick={(e) => {
+                if (!hasBooking && !isAnyDragging) {
+                  e.stopPropagation()
+                  onCellClick(room.id, colOffset, e.clientX, e.clientY)
+                }
+              }}
             >
               {!hasBooking && !isAnyDragging && (
                 <div className="flex h-full items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
@@ -148,6 +154,7 @@ export function RoomRow({
               windowSize={windowSize}
               colWidth={colWidth}
               stackIndex={idx % 3}
+              onDelete={onBlockDelete}
             />
           )
         })}
