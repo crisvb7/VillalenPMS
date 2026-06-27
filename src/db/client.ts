@@ -67,6 +67,11 @@ export type Guest = Prisma.GuestModel
  */
 export type Booking = Prisma.BookingModel
 /**
+ * Model AvailabilityBlock
+ * 
+ */
+export type AvailabilityBlock = Prisma.AvailabilityBlockModel
+/**
  * Model Invoice
  * 
  */

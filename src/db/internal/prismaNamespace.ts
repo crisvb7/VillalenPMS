@@ -389,6 +389,7 @@ export const ModelName = {
   ChannelConfig: 'ChannelConfig',
   Guest: 'Guest',
   Booking: 'Booking',
+  AvailabilityBlock: 'AvailabilityBlock',
   Invoice: 'Invoice'
 } as const
 
@@ -405,7 +406,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "room" | "iCalFeed" | "channelConfig" | "guest" | "booking" | "invoice"
+    modelProps: "room" | "iCalFeed" | "channelConfig" | "guest" | "booking" | "availabilityBlock" | "invoice"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -779,6 +780,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AvailabilityBlock: {
+      payload: Prisma.$AvailabilityBlockPayload<ExtArgs>
+      fields: Prisma.AvailabilityBlockFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AvailabilityBlockFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AvailabilityBlockFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>
+        }
+        findFirst: {
+          args: Prisma.AvailabilityBlockFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AvailabilityBlockFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>
+        }
+        findMany: {
+          args: Prisma.AvailabilityBlockFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>[]
+        }
+        create: {
+          args: Prisma.AvailabilityBlockCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>
+        }
+        createMany: {
+          args: Prisma.AvailabilityBlockCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AvailabilityBlockCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>[]
+        }
+        delete: {
+          args: Prisma.AvailabilityBlockDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>
+        }
+        update: {
+          args: Prisma.AvailabilityBlockUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>
+        }
+        deleteMany: {
+          args: Prisma.AvailabilityBlockDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AvailabilityBlockUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AvailabilityBlockUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>[]
+        }
+        upsert: {
+          args: Prisma.AvailabilityBlockUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AvailabilityBlockPayload>
+        }
+        aggregate: {
+          args: Prisma.AvailabilityBlockAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAvailabilityBlock>
+        }
+        groupBy: {
+          args: Prisma.AvailabilityBlockGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AvailabilityBlockGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AvailabilityBlockCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AvailabilityBlockCountAggregateOutputType> | number
+        }
+      }
+    }
     Invoice: {
       payload: Prisma.$InvoicePayload<ExtArgs>
       fields: Prisma.InvoiceFieldRefs
@@ -966,6 +1041,22 @@ export const BookingScalarFieldEnum = {
 } as const
 
 export type BookingScalarFieldEnum = (typeof BookingScalarFieldEnum)[keyof typeof BookingScalarFieldEnum]
+
+
+export const AvailabilityBlockScalarFieldEnum = {
+  id: 'id',
+  roomId: 'roomId',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  platforms: 'platforms',
+  reason: 'reason',
+  externalId: 'externalId',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AvailabilityBlockScalarFieldEnum = (typeof AvailabilityBlockScalarFieldEnum)[keyof typeof AvailabilityBlockScalarFieldEnum]
 
 
 export const InvoiceScalarFieldEnum = {
@@ -1295,6 +1386,7 @@ export type GlobalOmitConfig = {
   channelConfig?: Prisma.ChannelConfigOmit
   guest?: Prisma.GuestOmit
   booking?: Prisma.BookingOmit
+  availabilityBlock?: Prisma.AvailabilityBlockOmit
   invoice?: Prisma.InvoiceOmit
 }
 

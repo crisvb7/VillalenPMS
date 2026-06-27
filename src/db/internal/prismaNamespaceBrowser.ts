@@ -56,6 +56,7 @@ export const ModelName = {
   ChannelConfig: 'ChannelConfig',
   Guest: 'Guest',
   Booking: 'Booking',
+  AvailabilityBlock: 'AvailabilityBlock',
   Invoice: 'Invoice'
 } as const
 
@@ -149,6 +150,22 @@ export const BookingScalarFieldEnum = {
 } as const
 
 export type BookingScalarFieldEnum = (typeof BookingScalarFieldEnum)[keyof typeof BookingScalarFieldEnum]
+
+
+export const AvailabilityBlockScalarFieldEnum = {
+  id: 'id',
+  roomId: 'roomId',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  platforms: 'platforms',
+  reason: 'reason',
+  externalId: 'externalId',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AvailabilityBlockScalarFieldEnum = (typeof AvailabilityBlockScalarFieldEnum)[keyof typeof AvailabilityBlockScalarFieldEnum]
 
 
 export const InvoiceScalarFieldEnum = {
